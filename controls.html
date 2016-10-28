@@ -1,0 +1,66 @@
+<html>
+<head>
+	<title>Robot Control</title>
+	<script src="leap-0.6.4.js"></script>
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+
+	<script>
+		console.log("hello");
+
+		function GestureState() {
+		  this.numFists = 0;
+		  this.openHand = 0;
+		  this.isFisting = false;
+		  this.palmUp = false;
+		  this.palmDown = false;
+		  this.isIndex = false;
+		  this.isPinky = false;
+		}
+
+		// Setup Leap loop with frame callback function
+		var controllerOptions = {enableGestures: true};
+
+		Leap.loop(controllerOptions, function(frame) {
+			console.log("Logging hand positions");
+
+			var hand = frame.hands[0];
+
+			if(!hand){
+				return;
+			}
+
+		  	if(hand.grabStrength<=0.3){
+				if(hand.palmNormal<0){
+					this.palmDown = true;
+					console.log("palm down");
+					$.ajax("http://localhost:5000/leap", {"method":"post", "contentType":"application/json", "data":JSON.stringify({"event":"palmDown"})});
+				}else{
+				  	this.palmUp = true;
+				  	console.log("palm up");
+				  	$.ajax("http://localhost:5000/leap", {"method":"post", "contentType":"application/json", "data":JSON.stringify({"event":"palmUp"})});
+				}
+		  	}else if(hand.grabStrength>0.3){
+		  		if(hand.pinky.extended){
+		  			this.isPinky = true;
+		  			console.log("pinky out");
+		  			$.ajax("http://localhost:5000/leap", {"method":"post", "contentType":"application/json", "data":JSON.stringify({"event":"pinky"})});
+		  		}else{
+		  			this.isIndex = true;
+		  			console.log("index out");
+		  			$.ajax("http://localhost:5000/leap", {"method":"post", "contentType":"application/json", "data":JSON.stringify({"event":"index"})});
+		  		}
+		  	}else{
+		  		this.isFisting=true;
+		  		console.log("fist");
+		  		$.ajax("http://localhost:5000/leap", {"method":"post", "contentType":"application/json", "data":JSON.stringify({"event":"fist"})});
+		  	}
+
+
+		});
+	</script>
+
+</head>
+<body>
+</body>
+
+</html>

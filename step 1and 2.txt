@@ -1,0 +1,222 @@
+﻿Building a 4WD Rover.
+
+There are three basic steps provided, and steps 4 and onwards is when the hacking begins.
+Step 1: Build it, install some software, connect to wifi, and drive it.
+Step 2: Add a camera, and install more software and watch the streaming video or stills.
+Step 3: Add a few sensors and read the values, and add some output devices and change their values.
+Step 4: Examine the leftover pieces, and anything you brought and start hacking the robot.
+
+Step 1:
+Build the physical device, add motors, batteries, Edison, motor drivers and get it moving.
+
+a: Build it:
+Follow the instructions in the box for all mechanical parts, or copy the example at the Intel table.
+Online examples are available, for example https://github.com/Seeed-Studio/Edison_WiFi_Car
+
+NOTE: Don't install the Motor Driver in the Hercules Box, use the supplied I2C Motor Driver as described in the 
+Edison_WiFi_Car example.
+
+It's recommended to start with one Motor Driver and connect the motors on each side together. If your project
+needs more drive capability there are some extras available.
+
+Example code for 1 motor driver:  NOTE: Direction of motors is dependent on wiring and code.
+After updating the Edison to the latest OS image, copy the code below into a file name motor1.js and 
+execute it using "node motor1.js" command
+-----Cut below here ------
+var keypress = require('keypress');
+
+// make `process.stdin` begin emitting "keypress" events
+keypress(process.stdin);
+
+// listen for the "keypress" event
+process.stdin.on('keypress', function (ch, key) {
+  console.log('got "keypress"', key);
+  if (key && key.ctrl && key.name == 'c') {
+    process.stdin.pause();
+  }
+  if (key && key.name == 'w') {
+    forward(127);
+
+  }
+
+  else if (key && key.name == 's') {
+    reverse(127);
+
+  }
+
+  else if (key && key.name == 'a') {
+    spin_left(127);
+
+  }
+
+  else if (key && key.name == 'd') {
+    spin_right(127);
+
+  }
+
+  else{
+    stop();
+  }
+
+});
+
+process.stdin.setRawMode(true);
+process.stdin.resume();
+
+var groveMotorDriver_lib = require('jsupm_grovemd');
+var i2c_addr1 = 15;
+
+
+// Instantiate an I2C Grove Motor Driver on I2C address 0x0f with swtitches set to 1111 or 15 in decimal
+var motor1 = new groveMotorDriver_lib.GroveMD(
+	groveMotorDriver_lib.GROVEMD_I2C_BUS, i2c_addr1);
+
+
+
+function forward(speed)
+{
+	if (motor1 )
+	{
+		// set direction to CW and set speed to 50%
+		console.log("motor 1 forward at " + speed);
+		motor1.setMotorDirections(groveMotorDriver_lib.GroveMD.DIR_CCW,
+                                                     groveMotorDriver_lib.GroveMD.DIR_CW);
+		motor1.setMotorSpeeds(speed, speed);
+
+  	}
+}
+
+function reverse(speed)
+{
+
+	if (motor1 )
+	{
+		// set direction to CW and set speed to 50%
+		console.log("motor 1 reverse at " + speed);
+		motor1.setMotorDirections(groveMotorDriver_lib.GroveMD.DIR_CW,
+                                                     groveMotorDriver_lib.GroveMD.DIR_CCW);
+		motor1.setMotorSpeeds(speed, speed);
+
+	}
+}
+
+function spin_left(speed)
+{
+	if (motor1 )
+	{
+		// set direction to CW and set speed to 50%
+		console.log("motor 1 left at " + speed);
+		motor1.setMotorDirections(groveMotorDriver_lib.GroveMD.DIR_CCW,
+                                                     groveMotorDriver_lib.GroveMD.DIR_CCW);
+		motor1.setMotorSpeeds(speed, speed);
+
+		
+}
+
+function spin_right(speed)
+{
+	if (motor1 && motor2)
+	{
+		// set direction to CW and set speed to 50%
+		console.log("motor 1 right at " + speed);
+		motor1.setMotorDirections(groveMotorDriver_lib.GroveMD.DIR_CW,
+                                                     groveMotorDriver_lib.GroveMD.DIR_CW);
+		motor1.setMotorSpeeds(speed, speed);
+
+
+	}
+}
+
+function stop()
+{
+	if (motor1 )
+	{
+		console.log("Stopping motors");
+		motor1.setMotorSpeeds(0, 0);
+ 
+	}
+}
+
+function end()
+{
+	if (motor1)
+	{
+		console.log("Stopping motors");
+		motor1.setMotorSpeeds(0, 0);
+	}
+	exit();
+}
+
+// When exiting: clear memory and print exit message
+function exit()
+{
+	if (motor1)
+	{
+		motor1 = null;
+		groveMotorDriver_lib.cleanUp();
+	}
+	
+	
+	groveMotorDriver_lib = null;
+	console.log("Exiting");
+	process.exit(0);
+}
+
+
+process.on('SIGINT', function()
+{
+	exit();
+});
+--------------cut above here --------------------
+
+Step 1 is complete.
+
+Step 2: Adding a USB camera and mjpg-streamer
+
+To use the USB socket on the Edison, you will need to use the supplied +12v supply.
+To enable the camera flip the switch beside the USBs toward the large USB and power ports.
+
+Edit the base-feeds.conf file to add the Edison Repo's
+$ nano /etc/opkg/base-feeds.conf
+
+Add below lines in the nano text editor
+src all     http://iotdk.intel.com/repos/2.0/iotdk/all
+src x86 http://iotdk.intel.com/repos/2.0/iotdk/x86
+src i586    http://iotdk.intel.com/repos/2.0/iotdk/i586
+
+Once you've modified the file, press Ctrl-X to quit nano editor and “Y” to save the file while exiting.
+
+Update opkg manager by following command,
+$ opkg update
+
+Install all required package to start video streaming
+$ opkg install libjpeg-dev libv4l-dev
+
+Now download MJPG streamer from https://sourceforge.net/projects/mjpg-streamer/
+and unpack it in the mjpg-streamer directory.
+
+Enter mjpg-streamer directory
+$ cd mjpg-streamer
+
+Compile the mjpg-streamer
+$ make
+
+To make it easier  copy the following lines into a new file named run_edison.sh 
+----- cut here ---
+#!/bin/bash
+
+./mjpg_streamer -i "./input_uvc.so -d /dev/video0 -r 640x480 -f 15" -o "./output_http.so -p 9000 -w ./www"
+--- cut here ---
+
+Run mjpg-streamer at port 9000
+$ ./run_edison.sh
+
+Open Chrome browser, and type http://<IP Address>:9000 For e.g if my IP address is 192.168.3.3 then type http://192.168.3.3:9000
+
+More info on mjpg-streamer and its options are at the URL below.
+
+http://skillfulness.blogspot.com/2010/03/mjpg-streamer-documentation.html
+
+
+For an alternate webcam implementation check the Getting Started Book or
+Check this instructable for edicam info http://www.instructables.com/id/Intel-Edison-IP-Webcam/
